@@ -74,9 +74,39 @@ cd frontend && python3 -m http.server 8080   # dashboard at http://localhost:808
 
 Omni patterns: `AbstractReactive` / `AbstractCallback` from [`Reactive-Network/reactive-lib-omni`](https://github.com/Reactive-Network/reactive-lib-omni), `SYSTEM.subscribe(...)`, `react(LogRecord) onlySystem`, `SYSTEM.requestCallbackV_1_0(...)`.
 
-## Deployed contracts & demo transactions
+## Deployed contracts
 
-_Populated by `scripts/deploy.sh` / `scripts/demo.py` into `deployments/`. See the dashboard for live addresses, the execution log and explorer links._
+| Contract | Chain | Address |
+|---|---|---|
+| `SubsecondReactive` | Reactive Lasna | [`0x46dc3D0d1b1628426b8bd42cB4f02eC7FD1CE24F`](https://lasna.reactscan.net/address/0x46dc3D0d1b1628426b8bd42cB4f02eC7FD1CE24F) |
+| `ArbExecutor` | Base Sepolia | [`0xE93061B12B68199B44F572dE30Dc5Cca992AD713`](https://sepolia.basescan.org/address/0xE93061B12B68199B44F572dE30Dc5Cca992AD713) |
+| `ConstantProductPool` A | Base Sepolia | [`0xA3Dc90527f404019024444dbD19E22215750f4Eb`](https://sepolia.basescan.org/address/0xA3Dc90527f404019024444dbD19E22215750f4Eb) |
+| `ConstantProductPool` B | Base Sepolia | [`0x69C5d823066904221415888927Db6D79334D6fe3`](https://sepolia.basescan.org/address/0x69C5d823066904221415888927Db6D79334D6fe3) |
+| `MockToken` sWETH | Base Sepolia | [`0x46dc3D0d1b1628426b8bd42cB4f02eC7FD1CE24F`](https://sepolia.basescan.org/address/0x46dc3D0d1b1628426b8bd42cB4f02eC7FD1CE24F) |
+| `MockToken` sUSDC | Base Sepolia | [`0x77E7bE8c2F4e5b31a917Ef2bdF726154CF828630`](https://sepolia.basescan.org/address/0x77E7bE8c2F4e5b31a917Ef2bdF726154CF828630) |
+
+## Measured result — a live run of 5 loops
+
+Every opportunity below is a real origin → reactive → callback loop on testnet; the reactive
+transaction and the callback transaction both exist on-chain.
+
+| # | gap at detection (bps) | full-loop latency | profit (sUSDC) | status |
+|---|---|---|---|---|
+| 1 | 1031 | 2s | 459.02 | EXECUTED |
+| 2 | 1009 | 1s | 448.83 | EXECUTED |
+| 3 | 987 | 1s | 439.07 | EXECUTED |
+| 4 | 967 | 1s | 429.72 | EXECUTED |
+| 5 | 947 | 2s | 420.76 | EXECUTED |
+
+**5 / 5 captured · average full-loop latency 1.4s · range 1–2s · total profit 2,197.39 sUSDC.**
+
+Example loop (iteration 1):
+- origin shock swap (Base Sepolia): [`0x4d42cca1…ee81`](https://sepolia.basescan.org/tx/0x4d42cca1bff707e17f1ef5c4b3fc6e8886b92e81e1ebd3d92a036ea3f7e3ee81)
+- reactive detect + callback (Lasna): the reactive contract's `GapDetected` / `CallbackRequested` at [`0x46dc…E24F`](https://lasna.reactscan.net/address/0x46dc3D0d1b1628426b8bd42cB4f02eC7FD1CE24F)
+- arb callback (Base Sepolia): [`0x579cad26…b7c0`](https://sepolia.basescan.org/tx/579cad2603b9045a3e652f6bd67cd96112929cfa91e93fef77de542cf0eeb7c0)
+
+With a ~7s legacy reaction these ~1s windows would already have closed; Omni's ~1s reaction
+lands inside them. Full JSON in `deployments/demo_results.json`.
 
 ## License
 MIT
