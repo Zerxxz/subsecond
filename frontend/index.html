@@ -174,7 +174,7 @@ function renderKpis(s){
     kpi("Avg full-loop latency",s.avg_latency_s!=null?fmt(s.avg_latency_s,2)+"s":"—","origin event → callback","c-cyan")+
     kpi("Windows captured",s.executed+" / "+s.iterations,"arbs that landed in-window","c-green")+
     kpi("Miss rate",fmt(miss,1)+"%","gap closed before callback","c-amber")+
-    kpi("Total profit",fmt(s.total_profit/1e18,2),"sUSDC realized","c-violet")+
+    kpi("Total profit",fmt(s.total_profit_usdc!=null?s.total_profit_usdc:(s.total_profit?Number(s.total_profit)/1e18:null),2),"sUSDC realized","c-violet")+
     kpi("Reactive block","~1s","vs ~7s legacy","c-cyan");
 }
 
@@ -204,7 +204,7 @@ function renderLog(results){
     const exec=r.status==="executed";
     const badge=exec?'<span class="badge b-exec">EXECUTED</span>':(r.status==="missed"?'<span class="badge b-miss">MISSED</span>':'<span class="badge" style="background:rgba(133,149,168,.15);color:var(--mut)">NO CB</span>');
     const tx=r.callback_tx?`<a href="${BASESCAN}${r.callback_tx}" target="_blank">${short(r.callback_tx)}</a>`:"—";
-    return `<tr><td>${i+1}</td><td>${r.gap_bps!=null?fmt(r.gap_bps,0):"—"}</td><td class="num ${exec?'c-green':'c-red'}">${r.full_loop_latency!=null?r.full_loop_latency:"—"}</td><td class="num">${r.profit!=null?fmt(r.profit/1e18,3):"—"}</td><td>${badge}</td><td>${tx}</td></tr>`;
+    return `<tr><td>${i+1}</td><td>${r.gap_bps!=null?fmt(r.gap_bps,0):"—"}</td><td class="num ${exec?'c-green':'c-red'}">${r.full_loop_latency!=null?r.full_loop_latency:"—"}</td><td class="num">${r.profit_usdc!=null?fmt(r.profit_usdc,3):"—"}</td><td>${badge}</td><td>${tx}</td></tr>`;
   }).join('');
 }
 
@@ -245,7 +245,7 @@ async function live(o,l){
 }
 
 (async()=>{
-  const [o,l,d]=await Promise.all([jget('deployments/origin.json'),jget('deployments/lasna.json'),jget('deployments/demo_results.json')]);
+  const [o,l,d]=await Promise.all([jget('../deployments/origin.json'),jget('../deployments/lasna.json'),jget('../deployments/demo_results.json')]);
   const results=d?d.results:null, summary=d?d.summary:null;
   renderKpis(summary);renderChart(results);renderLog(results);renderContracts(o,l);renderArc(results);
   if(!o)document.getElementById('status').textContent="scaffold · not deployed";

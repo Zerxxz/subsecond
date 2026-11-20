@@ -143,7 +143,8 @@ def main():
             w = ex["words"]  # dir, amountIn, profit, gapDet, gapExec, originTs, cbTs, latency
             row.update({"status": "executed", "callback_ts": ex["callback_ts"],
                         "callback_tx": ex["tx"], "gap_bps": w[3], "amount_in": w[1],
-                        "profit": w[2], "gap_at_execution": w[4],
+                        "profit_wei": str(w[2]), "profit_usdc": w[2] / 1e18,
+                        "gap_at_execution": w[4],
                         "full_loop_latency": ex["callback_ts"] - origin_ts,
                         "event_latency": w[7]})
         else:
@@ -151,7 +152,7 @@ def main():
         results.append(row)
         lat = row.get("full_loop_latency")
         print(f"[{i+1}/{N}] {row['status']:9s} gap={row.get('gap_bps')}bps "
-              f"latency={lat}s profit={row.get('profit',0)/1e18:.4f}", flush=True)
+              f"latency={lat}s profit={row.get('profit_usdc',0):.4f}", flush=True)
         time.sleep(1)
 
     executed = [r for r in results if r["status"] == "executed"]
@@ -161,7 +162,8 @@ def main():
                "avg_latency_s": sum(lats)/len(lats) if lats else None,
                "min_latency_s": min(lats) if lats else None,
                "max_latency_s": max(lats) if lats else None,
-               "total_profit": sum(r.get("profit", 0) for r in executed)}
+               "total_profit": sum(r.get("profit", 0) for r in executed),
+               "total_profit_usdc": sum(r.get("profit_usdc", 0.0) for r in executed)}
     out = {"summary": summary, "results": results,
            "addresses": {"reactive": REACTIVE, "executor": EXECUTOR, "poolA": POOL_A,
                          "poolB": origin["poolB"], "token0": origin["token0"], "token1": TOKEN1}}
