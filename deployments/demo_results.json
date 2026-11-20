@@ -1,0 +1,91 @@
+{
+  "summary": {
+    "iterations": 5,
+    "executed": 5,
+    "missed": 0,
+    "avg_latency_s": 1.2,
+    "min_latency_s": 1,
+    "max_latency_s": 2,
+    "total_profit": 2455126145533477556484
+  },
+  "results": [
+    {
+      "iteration": 0,
+      "origin_tx": "e24786c918e0c44aaee8ba4c61a3585c8cb06dcc500dc31031d589781f884470",
+      "origin_ts": 1795189359,
+      "status": "executed",
+      "callback_ts": 1795189360,
+      "callback_tx": "0c4b78ff63715ed301bf7615e5ca6646e225d98b7172b8e2cd0dd17cdc163195",
+      "gap_bps": 1150,
+      "amount_in": 9605753109445770966167,
+      "profit": 507223321596413831867,
+      "gap_at_execution": 1150,
+      "full_loop_latency": 1,
+      "event_latency": 1
+    },
+    {
+      "iteration": 1,
+      "origin_tx": "b95a70f7dd3d98e8b022000c3e19d769d57d6c6399fdd94e9d6a9dd2bdcbac74",
+      "origin_ts": 1795189363,
+      "status": "executed",
+      "callback_ts": 1795189364,
+      "callback_tx": "2a4edf9c8e1de1980cf811a4e23036ee6624f47975c43dcbee4dbd2797d10a56",
+      "gap_bps": 1133,
+      "amount_in": 9708123691762211600524,
+      "profit": 504830824471632486854,
+      "gap_at_execution": 1133,
+      "full_loop_latency": 1,
+      "event_latency": 1
+    },
+    {
+      "iteration": 2,
+      "origin_tx": "61a12e9db49af55cda4b871db028b0d4c5837d91b48a300ad66fc94d038fe513",
+      "origin_ts": 1795189368,
+      "status": "executed",
+      "callback_ts": 1795189369,
+      "callback_tx": "4c98d2fdf4fd9db891a5b46305fc25f10d8607090af03680490b0d2b13385717",
+      "gap_bps": 1106,
+      "amount_in": 9713732159079035278225,
+      "profit": 492543372903975311837,
+      "gap_at_execution": 1106,
+      "full_loop_latency": 1,
+      "event_latency": 1
+    },
+    {
+      "iteration": 3,
+      "origin_tx": "0b75be48d2bc73c65608ba9f1954b254365a388ef579cb9abe39d170298a6e85",
+      "origin_ts": 1795189372,
+      "status": "executed",
+      "callback_ts": 1795189374,
+      "callback_tx": "6d8557a3eca4fedce11b96d39e2802e01b9e69b3525f2b7ab283d156f2153a5e",
+      "gap_bps": 1080,
+      "amount_in": 9719204007380488515273,
+      "profit": 480845523324778567535,
+      "gap_at_execution": 1080,
+      "full_loop_latency": 2,
+      "event_latency": 2
+    },
+    {
+      "iteration": 4,
+      "origin_tx": "5e695f91967fb4d853bcd5691312f409d67d6b76179ef830c6fc8f33d679cccd",
+      "origin_ts": 1795189377,
+      "status": "executed",
+      "callback_ts": 1795189378,
+      "callback_tx": "a01422850f34a87045ee88ef05410917e65c54ed69da2c79a257083fac573edd",
+      "gap_bps": 1055,
+      "amount_in": 9724417402174179646830,
+      "profit": 469683103236677358391,
+      "gap_at_execution": 1055,
+      "full_loop_latency": 1,
+      "event_latency": 1
+    }
+  ],
+  "addresses": {
+    "reactive": "0x46dc3D0d1b1628426b8bd42cB4f02eC7FD1CE24F",
+    "executor": "0xE93061B12B68199B44F572dE30Dc5Cca992AD713",
+    "poolA": "0xA3Dc90527f404019024444dbD19E22215750f4Eb",
+    "poolB": "0x69C5d823066904221415888927Db6D79334D6fe3",
+    "token0": "0x46dc3D0d1b1628426b8bd42cB4f02eC7FD1CE24F",
+    "token1": "0x77E7bE8c2F4e5b31a917Ef2bdF726154CF828630"
+  }
+}

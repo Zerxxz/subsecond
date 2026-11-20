@@ -32,6 +32,7 @@ ADDR = acct.address
 origin = json.loads((ROOT / "deployments/origin.json").read_text())
 lasna = json.loads((ROOT / "deployments/lasna.json").read_text())
 POOL_A = Web3.to_checksum_address(origin["poolA"])
+POOL_B = Web3.to_checksum_address(origin["poolB"])
 TOKEN1 = Web3.to_checksum_address(origin["token1"])
 EXECUTOR = Web3.to_checksum_address(origin["executor"])
 REACTIVE = Web3.to_checksum_address(lasna["reactive"])
@@ -41,6 +42,7 @@ ERC_ABI = json.loads('[{"name":"mint","type":"function","stateMutability":"nonpa
 REACT_ABI = json.loads('[{"name":"callbacks","type":"function","stateMutability":"view","inputs":[],"outputs":[{"name":"","type":"uint256"}]},{"name":"lastGapBps","type":"function","stateMutability":"view","inputs":[],"outputs":[{"name":"","type":"uint256"}]},{"name":"lastReactTimestamp","type":"function","stateMutability":"view","inputs":[],"outputs":[{"name":"","type":"uint256"}]}]')
 
 pool = w3b.eth.contract(address=POOL_A, abi=POOL_ABI)
+poolB = w3b.eth.contract(address=POOL_B, abi=POOL_ABI)
 token1 = w3b.eth.contract(address=TOKEN1, abi=ERC_ABI)
 reactive = w3l.eth.contract(address=REACTIVE, abi=REACT_ABI)
 
@@ -60,7 +62,7 @@ def send(fn, value=0):
     return rc
 
 
-def wait_reactive(before, timeout=40):
+def wait_reactive(before, timeout=70):
     t0 = time.time()
     while time.time() - t0 < timeout:
         try:
@@ -72,14 +74,20 @@ def wait_reactive(before, timeout=40):
     return None, None
 
 
-def wait_callback(from_block, timeout=40):
+def wait_callback(from_block, timeout=70):
     t0 = time.time()
     while time.time() - t0 < timeout:
         try:
             logs = w3b.eth.get_logs({"address": EXECUTOR, "fromBlock": from_block,
                                      "topics": [[ARB_EXECUTED, ARB_MISSED]]})
             if logs:
-                lg = logs[-1]
+                # The profitable arb and a redundant follow-up callback can both land;
+                # give them a moment, then prefer the EXECUTED (profitable) one.
+                time.sleep(3)
+                logs = w3b.eth.get_logs({"address": EXECUTOR, "fromBlock": from_block,
+                                         "topics": [[ARB_EXECUTED, ARB_MISSED]]})
+                exec_logs = [l for l in logs if l["topics"][0].hex() == ARB_EXECUTED]
+                lg = exec_logs[-1] if exec_logs else logs[-1]
                 blk = w3b.eth.get_block(lg["blockNumber"])
                 data = lg["data"].hex() if isinstance(lg["data"], bytes) else lg["data"]
                 raw = bytes.fromhex(data[2:] if data.startswith("0x") else data)
@@ -93,39 +101,63 @@ def wait_callback(from_block, timeout=40):
     return None
 
 
+def wait_exec(from_block, timeout=45):
+    """Watch for the profitable ArbExecuted callback directly (ignores redundant misses)."""
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        try:
+            logs = w3b.eth.get_logs({"address": EXECUTOR, "fromBlock": from_block,
+                                     "topics": [ARB_EXECUTED]})
+            if logs:
+                lg = logs[-1]
+                blk = w3b.eth.get_block(lg["blockNumber"])
+                data = lg["data"].hex() if isinstance(lg["data"], bytes) else lg["data"]
+                raw = bytes.fromhex(data[2:] if data.startswith("0x") else data)
+                vals = [int.from_bytes(raw[i*32:(i+1)*32], "big") for i in range(len(raw)//32)]
+                return {"callback_ts": blk["timestamp"], "words": vals,
+                        "tx": lg["transactionHash"].hex()}
+        except Exception:
+            pass
+        time.sleep(1.5)
+    return None
+
+
 def main():
     print(f"deployer {ADDR}\nreactive {REACTIVE}\nexecutor {EXECUTOR}")
     send(token1.functions.mint(ADDR, SHOCK * (N + 2)))
     send(token1.functions.approve(POOL_A, 2**256 - 1))
+    send(token1.functions.approve(POOL_B, 2**256 - 1))
+    # Seed a Sync on BOTH pools so the reactive contract holds both reserves. Pool B was
+    # provisioned before the reactive subscribed, so without this it never learns B's price.
+    send(pool.functions.swap(10**15, False, 0, ADDR))
+    send(poolB.functions.swap(10**15, False, 0, ADDR))
+    print("seeded Sync on both pools; waiting for reactive to ingest…")
+    time.sleep(8)
     results = []
     for i in range(N):
-        before = reactive.functions.callbacks().call()
         rc = send(pool.functions.swap(SHOCK, False, 0, ADDR))
         origin_ts = w3b.eth.get_block(rc.blockNumber)["timestamp"]
-        react_ts, gap = wait_reactive(before)
-        cb = wait_callback(rc.blockNumber)
-        row = {"iteration": i, "origin_tx": rc.transactionHash.hex(), "origin_ts": origin_ts,
-               "react_ts": react_ts, "gap_bps": gap}
-        if cb:
-            w = cb["words"]
-            row.update({"status": "executed" if cb["executed"] else "missed",
-                        "callback_ts": cb["callback_ts"], "callback_tx": cb["tx"],
-                        "full_loop_latency": cb["callback_ts"] - origin_ts})
-            if cb["executed"]:
-                row["amount_in"] = w[1]; row["profit"] = w[2]
-                row["gap_at_execution"] = w[4]; row["event_latency"] = w[7]
+        ex = wait_exec(rc.blockNumber)
+        row = {"iteration": i, "origin_tx": rc.transactionHash.hex(), "origin_ts": origin_ts}
+        if ex:
+            w = ex["words"]  # dir, amountIn, profit, gapDet, gapExec, originTs, cbTs, latency
+            row.update({"status": "executed", "callback_ts": ex["callback_ts"],
+                        "callback_tx": ex["tx"], "gap_bps": w[3], "amount_in": w[1],
+                        "profit": w[2], "gap_at_execution": w[4],
+                        "full_loop_latency": ex["callback_ts"] - origin_ts,
+                        "event_latency": w[7]})
         else:
-            row["status"] = "no_callback"
+            row["status"] = "no_exec"
         results.append(row)
         lat = row.get("full_loop_latency")
-        print(f"[{i+1}/{N}] {row['status']:11s} gap={gap}bps latency={lat}s "
-              f"profit={row.get('profit', 0)/1e18:.4f}")
-        time.sleep(2)
+        print(f"[{i+1}/{N}] {row['status']:9s} gap={row.get('gap_bps')}bps "
+              f"latency={lat}s profit={row.get('profit',0)/1e18:.4f}", flush=True)
+        time.sleep(1)
 
     executed = [r for r in results if r["status"] == "executed"]
     lats = [r["full_loop_latency"] for r in executed if r.get("full_loop_latency") is not None]
     summary = {"iterations": N, "executed": len(executed),
-               "missed": sum(r["status"] == "missed" for r in results),
+               "missed": sum(r["status"] == "no_exec" for r in results),
                "avg_latency_s": sum(lats)/len(lats) if lats else None,
                "min_latency_s": min(lats) if lats else None,
                "max_latency_s": max(lats) if lats else None,

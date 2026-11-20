@@ -1,0 +1,10 @@
+{
+  "chainId": 5318007,
+  "destChainId": 84532,
+  "executor": "0xE93061B12B68199B44F572dE30Dc5Cca992AD713",
+  "originChainId": 84532,
+  "poolA": "0xA3Dc90527f404019024444dbD19E22215750f4Eb",
+  "poolB": "0x69C5d823066904221415888927Db6D79334D6fe3",
+  "reactive": "0x46dc3D0d1b1628426b8bd42cB4f02eC7FD1CE24F",
+  "thresholdBps": 80
+}
