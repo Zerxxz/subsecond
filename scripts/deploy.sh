@@ -5,6 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export PATH="$HOME/.foundry/bin:$PATH"
+set -a; [ -f .env ] && source .env; set +a
 : "${DEPLOYER_KEY:?export DEPLOYER_KEY=0x... first}"
 
 BASE_RPC=https://sepolia.base.org
