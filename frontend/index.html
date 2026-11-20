@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SUBSECOND · Reactive Arbitrage Reflex</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#070b11; --panel:#0e151f; --panel2:#121b28; --line:#1e2a3a;
+    --ink:#e6edf5; --mut:#8595a8; --dim:#5a6a7e;
+    --cyan:#22d3ee; --cyan-d:#0e7490; --amber:#f59e0b; --green:#34d399; --red:#f87171; --violet:#a78bfa;
+    --mono:'IBM Plex Mono',monospace; --sans:'Space Grotesk',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;
+    background-image:radial-gradient(circle at 15% -10%,rgba(34,211,238,.08),transparent 40%),radial-gradient(circle at 90% 0%,rgba(167,139,250,.06),transparent 35%);
+    min-height:100vh;padding:32px 40px 60px;}
+  .wrap{max-width:1320px;margin:0 auto}
+  a{color:var(--cyan);text-decoration:none}
+  .mono{font-family:var(--mono)}
+  header{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:28px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:16px}
+  .mark{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,var(--cyan),var(--violet));
+    display:grid;place-items:center;font-weight:700;font-size:22px;color:#04121a;box-shadow:0 0 30px rgba(34,211,238,.35)}
+  h1{font-size:30px;font-weight:700;letter-spacing:-.5px}
+  h1 span{color:var(--cyan)}
+  .tag{color:var(--mut);font-size:13.5px;margin-top:2px}
+  .pill{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;
+    padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--mut)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .grid{display:grid;gap:18px}
+  .kpis{grid-template-columns:repeat(5,1fr);margin-bottom:18px}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:16px;padding:20px}
+  .kpi .lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);font-family:var(--mono)}
+  .kpi .val{font-size:32px;font-weight:700;font-family:var(--mono);margin-top:8px;letter-spacing:-1px}
+  .kpi .sub{font-size:12px;color:var(--mut);margin-top:4px}
+  .c-cyan{color:var(--cyan)} .c-amber{color:var(--amber)} .c-green{color:var(--green)} .c-red{color:var(--red)} .c-violet{color:var(--violet)}
+  .cols{grid-template-columns:1.55fr 1fr}
+  .panel-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .panel-h h2{font-size:16px;font-weight:600}
+  .panel-h .hint{font-size:11.5px;color:var(--dim);font-family:var(--mono)}
+  /* reflex arc */
+  .arc{display:flex;align-items:stretch;gap:0;margin:6px 0 4px}
+  .node{flex:1;text-align:center;padding:16px 10px;border:1px solid var(--line);border-radius:14px;background:var(--panel2);position:relative}
+  .node .chain{font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
+  .node .name{font-weight:600;font-size:14px;margin:6px 0 2px}
+  .node .t{font-family:var(--mono);font-size:12px;color:var(--cyan)}
+  .link{flex:0 0 64px;display:grid;place-items:center;color:var(--dim);font-family:var(--mono);font-size:11px;position:relative}
+  .link .hop{color:var(--amber);font-weight:600}
+  .link::before{content:"";position:absolute;top:50%;left:6px;right:6px;height:1px;background:linear-gradient(90deg,var(--cyan-d),var(--amber));opacity:.5}
+  .link span{position:relative;background:var(--bg);padding:2px 4px;z-index:1}
+  /* latency chart */
+  .chart{position:relative;height:230px;margin-top:8px}
+  .bar-row{display:flex;align-items:center;gap:10px;margin:7px 0}
+  .bar-lbl{flex:0 0 42px;font-family:var(--mono);font-size:11px;color:var(--mut);text-align:right}
+  .bar-track{flex:1;height:20px;background:var(--panel2);border-radius:5px;position:relative;overflow:hidden}
+  .bar-fill{height:100%;border-radius:5px;display:flex;align-items:center;justify-content:flex-end;padding-right:7px;font-family:var(--mono);font-size:10.5px;color:#04121a;font-weight:600;min-width:30px}
+  .thresh{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--red);opacity:.8}
+  .thresh-lbl{position:absolute;top:-22px;font-family:var(--mono);font-size:10px;color:var(--red);transform:translateX(-50%);white-space:nowrap}
+  .omni-band{position:absolute;top:-6px;bottom:-6px;background:rgba(52,211,153,.1);border-left:2px solid var(--green)}
+  .legend{display:flex;gap:18px;font-family:var(--mono);font-size:11px;color:var(--mut);margin-top:14px;flex-wrap:wrap}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:middle}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding:8px 10px;border-bottom:1px solid var(--line)}
+  td{padding:9px 10px;border-bottom:1px solid rgba(30,42,58,.5);font-family:var(--mono);font-size:12px}
+  tr:hover td{background:rgba(34,211,238,.03)}
+  .badge{font-family:var(--mono);font-size:10.5px;padding:3px 9px;border-radius:6px;font-weight:600}
+  .b-exec{background:rgba(52,211,153,.14);color:var(--green)}
+  .b-miss{background:rgba(248,113,113,.14);color:var(--red)}
+  .num{text-align:right}
+  .pools{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .pool{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--panel2)}
+  .pool .pn{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.1em}
+  .pool .pp{font-size:24px;font-weight:700;font-family:var(--mono);margin:6px 0}
+  .pool .pr{font-size:11.5px;color:var(--mut);font-family:var(--mono)}
+  .gapbox{margin-top:14px;padding:14px;border-radius:12px;border:1px dashed var(--cyan-d);background:rgba(34,211,238,.05);text-align:center}
+  .gapbox .g{font-size:28px;font-weight:700;font-family:var(--mono);color:var(--cyan)}
+  .gapbox .gl{font-size:11px;color:var(--mut);font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase}
+  .addr{font-family:var(--mono);font-size:11.5px;color:var(--mut);display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(30,42,58,.4)}
+  .addr b{color:var(--ink);font-weight:500}
+  .note{font-size:12.5px;color:var(--mut);margin-top:14px;line-height:1.6}
+  .note b{color:var(--ink)}
+  footer{margin-top:34px;padding-top:20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;color:var(--dim);font-family:var(--mono);font-size:11.5px;flex-wrap:wrap;gap:10px}
+  .section-title{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-family:var(--mono);margin:26px 0 12px}
+  @media(max-width:980px){.kpis{grid-template-columns:repeat(2,1fr)}.cols{grid-template-columns:1fr}.arc{flex-direction:column}.link{flex:0 0 30px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="mark">S</div>
+      <div>
+        <h1>SUB<span>SECOND</span></h1>
+        <div class="tag">A sub-second arbitrage reflex · Reactive Omni × Base Sepolia · 200ms origin blocks</div>
+      </div>
+    </div>
+    <div class="pill"><span class="dot"></span><span id="status">connecting…</span></div>
+  </header>
+
+  <div class="grid kpis" id="kpis"></div>
+
+  <div class="grid cols">
+    <div class="card">
+      <div class="panel-h"><h2>The latency race — why ~1s finality is required</h2><span class="hint">full-loop: origin event → callback</span></div>
+      <div class="chart" id="chart"></div>
+      <div class="legend">
+        <span><i style="background:var(--green)"></i>captured by Omni (~1s)</span>
+        <span><i style="background:var(--amber)"></i>slow but landed</span>
+        <span><i style="background:var(--red)"></i>legacy 7s window</span>
+        <span><i style="background:rgba(52,211,153,.3)"></i>Omni reaction band</span>
+      </div>
+      <div class="note" id="race-note"></div>
+    </div>
+
+    <div class="card">
+      <div class="panel-h"><h2>Live pools</h2><span class="hint">Base Sepolia</span></div>
+      <div class="pools">
+        <div class="pool"><div class="pn">POOL A</div><div class="pp" id="pa">—</div><div class="pr" id="ra">reserves —</div></div>
+        <div class="pool"><div class="pn">POOL B</div><div class="pp" id="pb">—</div><div class="pr" id="rb">reserves —</div></div>
+      </div>
+      <div class="gapbox"><div class="g" id="gap">—</div><div class="gl">current cross-pool gap (bps)</div></div>
+      <div class="note">The reactive contract reconstructs both prices from <b>Sync logs alone</b> — no cross-chain state read — and fires the instant the gap clears fees.</div>
+    </div>
+  </div>
+
+  <div class="section-title">The reflex arc</div>
+  <div class="card">
+    <div class="arc">
+      <div class="node"><div class="chain">Base Sepolia · origin</div><div class="name">Shock swap</div><div class="t" id="arc-o">t₀</div></div>
+      <div class="link"><span>log<br><span class="hop" id="arc-h1">~1s</span></span></div>
+      <div class="node"><div class="chain">Reactive Lasna</div><div class="name">react() detects gap</div><div class="t" id="arc-r">t₁</div></div>
+      <div class="link"><span>callback<br><span class="hop" id="arc-h2">~1s</span></span></div>
+      <div class="node"><div class="chain">Base Sepolia · dest</div><div class="name">ArbExecutor closes gap</div><div class="t" id="arc-c">t₂</div></div>
+    </div>
+    <div class="note">Every second in the loop counts. The executor re-reads reserves when the callback lands: if the gap already closed, the arb is reported <b class="c-red">MISSED</b>. A ~7s legacy reaction arrives after the window; Omni's ~1s lands inside it.</div>
+  </div>
+
+  <div class="section-title">Execution log</div>
+  <div class="card" style="padding:8px 12px">
+    <table>
+      <thead><tr><th>#</th><th>gap (bps)</th><th class="num">latency (s)</th><th class="num">profit (sUSDC)</th><th>status</th><th>callback tx</th></tr></thead>
+      <tbody id="log"></tbody>
+    </table>
+  </div>
+
+  <div class="section-title">Deployed contracts</div>
+  <div class="card" id="contracts"></div>
+
+  <footer>
+    <span>SUBSECOND · Reactive Omni Buildathon · Every Second Counts</span>
+    <span>origin 84532 · reactive 5318007 · callback proxy 0x476F…3585</span>
+  </footer>
+</div>
+
+<script>
+const BASE_RPC="https://sepolia.base.org", LASNA_RPC="https://lasna-rpc.rnk.dev/";
+const BASESCAN="https://sepolia.basescan.org/tx/", REACTSCAN="https://lasna.reactscan.net/tx/";
+const fmt=(n,d=2)=>n==null?"—":Number(n).toLocaleString(undefined,{maximumFractionDigits:d});
+const short=a=>a?a.slice(0,6)+"…"+a.slice(-4):"—";
+async function jget(p){try{const r=await fetch(p);return r.ok?await r.json():null}catch{return null}}
+
+function kpi(lbl,val,sub,cls){return `<div class="card kpi"><div class="lbl">${lbl}</div><div class="val ${cls||''}">${val}</div><div class="sub">${sub||''}</div></div>`}
+
+function renderKpis(s){
+  const el=document.getElementById('kpis');
+  if(!s){el.innerHTML=kpi("Full-loop latency","—","awaiting live run","c-cyan")+kpi("Windows captured","—","—","c-green")+kpi("Miss rate","—","—","c-amber")+kpi("Total profit","—","sUSDC","c-violet")+kpi("Reactive block","~1s","instant finality","c-cyan");return}
+  const miss=s.iterations?((s.missed/s.iterations)*100):0;
+  el.innerHTML=
+    kpi("Avg full-loop latency",s.avg_latency_s!=null?fmt(s.avg_latency_s,2)+"s":"—","origin event → callback","c-cyan")+
+    kpi("Windows captured",s.executed+" / "+s.iterations,"arbs that landed in-window","c-green")+
+    kpi("Miss rate",fmt(miss,1)+"%","gap closed before callback","c-amber")+
+    kpi("Total profit",fmt(s.total_profit/1e18,2),"sUSDC realized","c-violet")+
+    kpi("Reactive block","~1s","vs ~7s legacy","c-cyan");
+}
+
+function renderChart(results){
+  const el=document.getElementById('chart');
+  if(!results||!results.length){el.innerHTML='<div class="note">No measured run yet. Run <span class="mono">scripts/demo.py</span> after deploy to populate the latency race.</div>';return}
+  const max=Math.max(8,...results.map(r=>r.full_loop_latency||0))*1.1;
+  const legacyPct=(7/max)*100, omniPct=(1.5/max)*100;
+  let html=`<div class="omni-band" style="left:0;width:${omniPct}%"></div><div class="thresh" style="left:${legacyPct}%"><span class="thresh-lbl">legacy 7s</span></div>`;
+  results.forEach((r,i)=>{
+    const lat=r.full_loop_latency;
+    if(lat==null){html+=`<div class="bar-row"><div class="bar-lbl">#${i+1}</div><div class="bar-track"><div class="bar-fill" style="width:8%;background:var(--dim)">n/a</div></div></div>`;return}
+    const w=Math.max(4,(lat/max)*100);
+    const col=r.status==="missed"?"var(--red)":(lat<=1.5?"var(--green)":(lat<7?"var(--amber)":"var(--red)"));
+    html+=`<div class="bar-row"><div class="bar-lbl">#${i+1}</div><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${col}">${lat}s</div></div></div>`;
+  });
+  el.innerHTML=html;
+  const captured=results.filter(r=>r.status==="executed"&&(r.full_loop_latency||99)<7).length;
+  const wouldMiss=results.filter(r=>(r.full_loop_latency||0)>=1.5).length;
+  document.getElementById('race-note').innerHTML=`<b>${captured}</b> of ${results.length} windows landed inside the legacy 7s window. At a ~7s reaction, <b class="c-red">${wouldMiss}</b> of these sub-second gaps would already have closed — the profit only exists because Omni reacts in ~1s.`;
+}
+
+function renderLog(results){
+  const tb=document.getElementById('log');
+  if(!results||!results.length){tb.innerHTML='<tr><td colspan="6" style="color:var(--dim);text-align:center;padding:20px">awaiting live run</td></tr>';return}
+  tb.innerHTML=results.map((r,i)=>{
+    const exec=r.status==="executed";
+    const badge=exec?'<span class="badge b-exec">EXECUTED</span>':(r.status==="missed"?'<span class="badge b-miss">MISSED</span>':'<span class="badge" style="background:rgba(133,149,168,.15);color:var(--mut)">NO CB</span>');
+    const tx=r.callback_tx?`<a href="${BASESCAN}${r.callback_tx}" target="_blank">${short(r.callback_tx)}</a>`:"—";
+    return `<tr><td>${i+1}</td><td>${r.gap_bps!=null?fmt(r.gap_bps,0):"—"}</td><td class="num ${exec?'c-green':'c-red'}">${r.full_loop_latency!=null?r.full_loop_latency:"—"}</td><td class="num">${r.profit!=null?fmt(r.profit/1e18,3):"—"}</td><td>${badge}</td><td>${tx}</td></tr>`;
+  }).join('');
+}
+
+function renderContracts(o,l){
+  const el=document.getElementById('contracts');
+  if(!o){el.innerHTML='<div class="note">Not deployed yet. Run <span class="mono">scripts/deploy.sh</span>.</div>';return}
+  const rows=[["Reactive (Lasna)",l&&l.reactive,REACTSCAN.replace('/tx/','/address/')],["ArbExecutor (Base Sepolia)",o.executor,BASESCAN.replace('/tx/','/address/')],["Pool A",o.poolA,BASESCAN.replace('/tx/','/address/')],["Pool B",o.poolB,BASESCAN.replace('/tx/','/address/')],["sWETH",o.token0,BASESCAN.replace('/tx/','/address/')],["sUSDC",o.token1,BASESCAN.replace('/tx/','/address/')]];
+  el.innerHTML=rows.map(([n,a,ex])=>`<div class="addr"><b>${n}</b><span>${a?`<a href="${ex}${a}" target="_blank">${a}</a>`:"—"}</span></div>`).join('');
+}
+
+function renderArc(results){
+  const r=results&&results.find(x=>x.status==="executed");
+  if(!r)return;
+  document.getElementById('arc-o').textContent="t₀ = "+r.origin_ts;
+  document.getElementById('arc-r').textContent=r.react_ts?("t₁ = "+r.react_ts):"t₁";
+  document.getElementById('arc-c').textContent="t₂ = "+r.callback_ts;
+  if(r.react_ts){document.getElementById('arc-h1').textContent=(r.react_ts-r.origin_ts)+"s";}
+  document.getElementById('arc-h2').textContent=(r.callback_ts-(r.react_ts||r.origin_ts))+"s";
+}
+
+const POOL_ABI=["function getReserves() view returns (uint256,uint256)","function price() view returns (uint256)"];
+const REACT_ABI=["function currentGap() view returns (uint8,uint256)","function callbacks() view returns (uint256)"];
+async function live(o,l){
+  if(!o||!l)return;
+  try{
+    const pb=new ethers.JsonRpcProvider(BASE_RPC), pl=new ethers.JsonRpcProvider(LASNA_RPC);
+    const pa=new ethers.Contract(o.poolA,POOL_ABI,pb), pbb=new ethers.Contract(o.poolB,POOL_ABI,pb);
+    const rc=new ethers.Contract(l.reactive,REACT_ABI,pl);
+    const [ra,rb,g]=await Promise.all([pa.getReserves(),pbb.getReserves(),rc.currentGap()]);
+    const priceA=Number(ra[1])*1e18/Number(ra[0])/1e18, priceB=Number(rb[1])*1e18/Number(rb[0])/1e18;
+    document.getElementById('pa').textContent=fmt(priceA,2);
+    document.getElementById('pb').textContent=fmt(priceB,2);
+    document.getElementById('ra').textContent="r0 "+fmt(Number(ra[0])/1e18,1)+" · r1 "+fmt(Number(ra[1])/1e18,0);
+    document.getElementById('rb').textContent="r0 "+fmt(Number(rb[0])/1e18,1)+" · r1 "+fmt(Number(rb[1])/1e18,0);
+    document.getElementById('gap').textContent=fmt(Number(g[1]),0);
+    document.getElementById('status').textContent="live · "+(await rc.callbacks())+" callbacks";
+  }catch(e){document.getElementById('status').textContent="deployed · rpc idle";}
+}
+
+(async()=>{
+  const [o,l,d]=await Promise.all([jget('deployments/origin.json'),jget('deployments/lasna.json'),jget('deployments/demo_results.json')]);
+  const results=d?d.results:null, summary=d?d.summary:null;
+  renderKpis(summary);renderChart(results);renderLog(results);renderContracts(o,l);renderArc(results);
+  if(!o)document.getElementById('status').textContent="scaffold · not deployed";
+  await live(o,l);
+})();
+</script>
+</body>
+</html>
