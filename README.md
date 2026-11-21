@@ -1,4 +1,4 @@
-# SUBSECOND
+![SUBSECOND](assets/subsecond-logo.svg)
 
 **A sub-second arbitrage reflex on Reactive Omni.** Two AMM pools on Base Sepolia (200ms blocks) drift apart for a fraction of a second; a reactive contract on Reactive Lasna (~1s blocks, instant finality) sees the gap in the event log and fires an authenticated callback that closes it — *before the window shuts*.
 
@@ -60,8 +60,11 @@ export DEPLOYER_KEY=0x...
 ./scripts/deploy.sh                # origin (Base Sepolia) + reactive (Lasna) + funding
 python3 scripts/demo.py 8          # drive 8 loops, measure latency → deployments/demo_results.json
 
-cd frontend && python3 -m http.server 8080   # dashboard at http://localhost:8080
+python3 -m http.server 8080   # from the repo root → dashboard at http://localhost:8080/frontend/
 ```
+
+> Serve from the **repo root**, not `frontend/` — the dashboard reads `deployments/`
+> and the brand assets via relative paths; serving only `frontend/` leaves the KPIs empty.
 
 `deploy.sh` predicts the Lasna reactive address from the deployer nonce so the executor's immutable `callbackSender` binds correctly, deploys both sides, funds the reactive contract with lREACT (payable constructor) and the executor with ETH for callback gas.
 
@@ -84,6 +87,10 @@ Omni patterns: `AbstractReactive` / `AbstractCallback` from [`Reactive-Network/r
 | `ConstantProductPool` B | Base Sepolia | [`0x69C5d823066904221415888927Db6D79334D6fe3`](https://sepolia.basescan.org/address/0x69C5d823066904221415888927Db6D79334D6fe3) |
 | `MockToken` sWETH | Base Sepolia | [`0x46dc3D0d1b1628426b8bd42cB4f02eC7FD1CE24F`](https://sepolia.basescan.org/address/0x46dc3D0d1b1628426b8bd42cB4f02eC7FD1CE24F) |
 | `MockToken` sUSDC | Base Sepolia | [`0x77E7bE8c2F4e5b31a917Ef2bdF726154CF828630`](https://sepolia.basescan.org/address/0x77E7bE8c2F4e5b31a917Ef2bdF726154CF828630) |
+
+## Demo video
+
+🎬 **[assets/subsecond-motion-vo.mp4](assets/subsecond-motion-vo.mp4)** — 33s narrated motion demo (1080p): the sub-second window, the reflex arc, and the measured live run.
 
 ## Measured result — a live run of 5 loops
 
